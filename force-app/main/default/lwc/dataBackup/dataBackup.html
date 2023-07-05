@@ -1,0 +1,30 @@
+<template>
+    <lightning-card>
+    <p>Data Backup</p>
+
+    <div>
+        <lightning-button label="Data" onclick={getObjectNames} variant="Brand" style="margin-right: 40px;"> 
+        </lightning-button>
+        <lightning-button label="Metadata" variant="brand">
+        </lightning-button>
+    </div>
+
+
+
+    
+
+        <template if:true={dataSection}>
+            <div style="height: 300px;">
+                <lightning-datatable columns={columns} data={objectNames} key-field="id">    
+                </lightning-datatable>
+            </div>
+            <lightning-input type="datetime" label="From" name="fromDate" required></lightning-input>
+            <lightning-input type="datetime" label="To" name="toDate" required></lightning-input>
+            <lightning-button variant="brand" label="export now" onclick={exportData}></lightning-button>
+        </template>
+
+        <template lwc:if={recordsData}>
+            <lightning-button label="Download CSV" icon-name="utility:download" onclick={downloadCSV} variant="brand"></lightning-button>
+        </template>
+    </lightning-card>
+</template>

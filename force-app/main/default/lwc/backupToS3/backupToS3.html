@@ -1,0 +1,72 @@
+<template>
+  <lightning-card>
+        <lightning-progress-indicator current-step="1" type="path" variant="base">
+            <lightning-progress-step label="Object" value="1"></lightning-progress-step>
+            <lightning-progress-step label="Service" value="2"></lightning-progress-step>
+        </lightning-progress-indicator>
+
+        <!--Search the elements-->
+        <lightning-layout multiple-rows="true" vertical-align="end">
+            <lightning-layout-item size="4" padding="around-small">
+                 <!--Input text to Search Account-->
+                <lightning-input type="search" placeholder="Search...." label="Search object to Backup"
+                    value={searchKey} 
+                    onchange={handleSearchKey}> 
+                </lightning-input>
+            </lightning-layout-item >
+
+            <!--lightning-layout-item size="2" padding="around-small">
+              
+                <lightning-button label="Search" variant="brand" onclick={SearchAccountHandler}>
+
+                </lightning-button>
+            </lightning-layout-item-->
+        </lightning-layout>
+
+        <!-- objects-->
+        <lightning-card>
+            <div style="height: 300px;">
+                <lightning-datatable columns={columns} data={objectNames} key-field="id">    
+                </lightning-datatable>
+            </div>
+            <!--lightning-button label="click" onclick={getObjectNames}></lightning-button-->
+        </lightning-card>
+
+
+        <!--service-->
+        <template if:true={service}>
+            <lightning-card title="Select service to Backup the Data">
+
+                <!--select onchange={handleSelect}>
+                    <option value="Select">Select</option>
+                    <option value="Local">Local Storage</option>
+                    <option value="s3">AWS s3</option>
+                </select-->
+
+                <lightning-radio-group name="radioGroup"
+                          options={options}
+                          value={value}
+                          type="radio" onchange={handleRadio}>
+                </lightning-radio-group>
+
+                <template if:true={aws}>
+                    <lightning-card title="Please Enter your credentials">
+                        <lightning-input label="AccessKey"></lightning-input>
+                        <lightning-input label="SecretKey"></lightning-input>
+                        <lightning-input label="AWS Region"></lightning-input>
+                    </lightning-card>
+                </template>
+
+                <template if:true={local}>  
+                  <lightning-card>
+                    <lightning-button variant="brand" label="Export now" onclick={exportData} style="margin-right: 40px;"></lightning-button>
+                    <lightning-button variant="brand" label="Schedule Export"></lightning-button>
+                    <!--lightning-button variant="brand" label="Schedule Export" onclick={uploadS3}></lightning-button-->
+                  </lightning-card> 
+                </template>
+
+            </lightning-card>
+        </template>
+    <lightning-button label="Next" onclick={handleNext}></lightning-button>
+  </lightning-card> 
+</template>
