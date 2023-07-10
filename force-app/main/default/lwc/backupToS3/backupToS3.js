@@ -3,14 +3,19 @@ import getObjectsApiNames from '@salesforce/apex/dataBackup.getObjectsApiNames';
 import getRecordsByObject from '@salesforce/apex/dataBackup.getRecordsByObject';
 import getObjectsApiNamesBySearch from '@salesforce/apex/dataBackup.getObjectsApiNamesBySearch';
 import uploadCSV from '@salesforce/apex/AWSFileService.uploadCSV';
+import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 export default class BackupToS3 extends LightningElement {
 
     @track objectNames = [];
     @track objectApiNames = [];
-    
+    @track selectedObjectNames=[];
+
+    isModal=true;
+    previous=true;
+    currentStep='1';
     searchKey;
     csvString='';
-    service;
+    service=false;
     local=false;
     aws = false;
     value='';
@@ -21,10 +26,9 @@ export default class BackupToS3 extends LightningElement {
         {label:'AWS S3',value:'S3'}];
 
     }
-
-    @wire(getObjectsApiNames)
-    result({data,error}){
-        if (data) {
+    connectedCallback(){
+        getObjectsApiNames()
+        .then(data=>{
             this.objectNames = [];
             for (var i = 0; i < data.length; i++){
                     var item={
@@ -33,10 +37,10 @@ export default class BackupToS3 extends LightningElement {
                     };
                 this.objectNames.push(item);
                 }
-        }
-        if(error){
-            console.log('error',error);
-        }
+        })
+        .catch(error=>{
+            console.log(error);
+        })
     }
 
     handleSearchKey(event){
@@ -62,42 +66,19 @@ export default class BackupToS3 extends LightningElement {
         }
     }
 
-   /* SearchAccountHandler(){
-
-        getObjectsApiNamesBySearch({textKey:this.searchKey})
-        .then(data=>{
-            console.log('data',data);
-            this.objectNames = [];
-            for (var i = 0; i < data.length; i++){
-                    var item={
-                    id:i,
-                    objectName:data[i]
-                    };
-                this.objectNames.push(item);
-                }
-        })
-        .catch(error=>{
-            console.log('error',error);
-        })
-    }*/
-    
-    handleSelect(event){
-        //console.log(event.target.value);
-        //this.serviceToBackup=event.target.value;
-        if (event.target.value =='Local') {
-            //console.log(event.target.value);
-            this.local = true;
-            this.aws = false;
-        }
-        if (event.target.value =='s3') {
-            //console.log(event.target.value);
-            this.aws = true;
-            this.local = false;
+    handleSelection(event){
+        console.log(event);
+        console.log(event.target.value);
+        this.selectedObjectNames=event.detail.selectedRows;
+        console.log(event.detail.value);
+        console.log('test obj'+this.selectedObjectNames);
+        for (let i = 0; i < selectedRows.length; i++) {
+            console.log('You selected: ' + selectedRows[i]);
+            console.log('You selected: ' + selectedRows[i].objectName);
         }
     }
-
+    
    
-
     handleRadio(event){
         if (event.target.value =='Local') {
             this.local = true;
@@ -107,35 +88,43 @@ export default class BackupToS3 extends LightningElement {
             this.aws = true;
             this.local = false;
         }
+        if(this.aws == true){
+
+        }
     }
 
-    handleNext(){
-        this.service=true;
-    }
-
-  
-
-    
-    /*getObjectNames(){
-        getObjectsApiNames()
-        .then(data=>{          
-            console.log(data); 
-            console.log(typeof data);
-            this.objectNames=[];
-            for(var i=0;i<data.length;i++){
-                var item={
-                    id:i,
-                    objectName:data[i]
-                };
-                this.objectNames.push(item);
-            }
-            console.log(this.objectNames);
+     /*handleClick() {
+        console.log('in modal');
+        const result =  MyModal.open({
+            label:'test',
+            // `label` is not included here in this example.
+            // it is set on lightning-modal-header instead
+            size: 'large',
+            description: 'Accessible description of modal\'s purpose',
+            //content: 'Passed into content api',
         })
-        .catch(error=>{
-            console.log(error);
+        .then((data)=>{
+            console.log('success');
+        }).catch((error)=>{
+            console.log('error');
         })
+        // if modal closed with X button, promise returns result = 'undefined'
+        // if modal closed with OK button, promise returns result = 'okay'
+        console.log(result);
     }*/
 
+    handleNext(){
+        this.currentStep='2';
+        this.service=true;
+        this.previous=false;
+    }
+    handlePrevious(){
+        this.currentStep='1';
+        this.previous=true;
+        this.service=false;
+
+    }
+    
     exportData(){
         // fetching Dates selected by user
         /*let dates=this.template.querySelectorAll('lightning-input');
@@ -151,31 +140,25 @@ export default class BackupToS3 extends LightningElement {
         console.log('to date',this.toDate);  */
        
         var selectedRows=this.template.querySelector('lightning-datatable').getSelectedRows();
+       // console.log('selectedRows ', selectedRows);
        // console.log('rows'+selectedRows)
         var selectedObjectNames=[];
         selectedObjectNames=JSON.stringify(selectedRows);
         selectedObjectNames = JSON.parse(selectedObjectNames);
-        //console.log('obj names' + selectedObjectNames);
-
+      //  console.log('obj names', selectedObjectNames);
         for (var i = 0; i < selectedObjectNames.length; i++){
             this.objectApiNames.push(selectedObjectNames[i].objectName);
         }
 
-        /*for(var i=0;i<this.objectApiNames.length;i++){
-            console.log('array',this.objectApiNames[i]);
-        }*/
-       
-
+      /*
+            @description : Implicitly fetching data of objects selected by the user
+            */
         getRecordsByObject({objectNames:this.objectApiNames})
         .then(data=>{
-            //console.log('data');
-            //console.log(data);
-            for(var i=0;i<data.length;i++){
-                /*console.log('data at '+i);
-                console.log(data[i]);
-                console.log('data type');
-                console.log(typeof data[i]);*/
-                this.downloadCSV(data[i]);
+            let c = this.objectApiNames[0];  
+            for(var i=0;i<this.objectApiNames.length;i++){
+                let c = this.objectApiNames[i]
+                this.downloadCSV(data[c],c);
             }
         })
         .catch(error=>{
@@ -186,7 +169,9 @@ export default class BackupToS3 extends LightningElement {
     /* 
         @description : This function is used to convert our data to CSV Format and User can download the file.
     */
-    downloadCSV(recordData){
+    downloadCSV(recordData,ApiName){
+        // console.log('recordsData>>>>>>>>>',recordData);
+        // console.log('ApiName>>>>>>>>>.',ApiName);
             let rowEnd = '\n';
             let csvString = '';
             // this set elminates the duplicates if have any duplicate keys
@@ -239,7 +224,7 @@ export default class BackupToS3 extends LightningElement {
             downloadElement.target = '_self';
             
             // CSV File Name
-            downloadElement.download = 'Account'+' Data.csv';
+            downloadElement.download = ApiName+' Data.csv';
             console.log(downloadElement);
             // below statement is required if you are using firefox browser
             document.body.appendChild(downloadElement);
@@ -250,22 +235,33 @@ export default class BackupToS3 extends LightningElement {
     }
 
     uploadS3(){
-        console.log('inside upload');
-        console.log(typeof this.csvString);
+       /* console.log('inside upload');
+        console.log(typeof this.csvString);*/
         const blob = new Blob([this.csvString], { type: 'text/csv;charset=utf-8;' });
         console.log('blob'+blob);
         // uploading to s3
         uploadCSV({csvString:this.csvString})
         .then(data=>{
             console.log('successfully send to csv');
+            this.showToast('Your data is successfull Backup to S3','success');
         })
         .catch(error=>{
+            this.showToast('Data is not sent to s3','error');
             console.log('error',error);
         })
 
-        console.log('blob object'+blob);
+       /* console.log('blob object'+blob);
         console.log(typeof blob);
-        console.log(navigator.msSaveBlob(blob, 'Account File'));
+        console.log(navigator.msSaveBlob(blob, 'Account File'));*/
  
+    }
+
+    showToast(message,variant){
+        const event = new ShowToastEvent({
+            title:'Sucess',
+            message: message,
+            variant: variant
+        });
+        this.dispatchEvent(event);
     }
 }

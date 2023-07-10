@@ -7,6 +7,18 @@ public with sharing class dataBackup {
        *@description:  This method is use to fetch all the Api names of objects in salesforce For both Setup and NonSetup
 		
 		**/
+     @auraEnabled(cacheable=true)
+    public static List<String>  getObjectsApiNamesBySearch(String textKey){
+        List<String> objects=new List<String>();
+        system.debug('data');
+        textKey='%' + textKey +'%';
+        List<EntityDefinition> objectsApiNames=[SELECT ID,QualifiedApiName FROM EntityDefinition WHERE QualifiedApiName Like:textKey];
+        //system.debug(objectsApiNames);
+        for(EntityDefinition entity:objectsApiNames){
+            objects.add(entity.QualifiedApiName);
+        }
+        return objects;
+    }
     
     @auraEnabled(cacheable=true)
     public static List<String>  getObjectsApiNames(){
@@ -69,20 +81,25 @@ public with sharing class dataBackup {
     }
     
     @auraEnabled(cacheable=true)
-    Public static List<list<Sobject>> getRecordsByObject(List<String> objectNames){
+    Public static Map<String,list<Sobject>> getRecordsByObject(List<String> objectNames){
+        Map<String,list<Sobject>> ObjectsData=new Map<String,list<Sobject>>();
         system.debug('objectNames'+objectNames);
             List<list<Sobject>> recordsToBackup=new List<list<Sobject>>();
             Map<String, Schema.SObjectType> schemaMap = Schema.getGlobalDescribe();
-            for(string objects:objectNames){
-                Map<String, Schema.SObjectField> fieldMap = schemaMap.get(objects).getDescribe().fields.getMap();
+            for(string objectName:objectNames){
+                Map<String, Schema.SObjectField> fieldMap = schemaMap.get(objectName).getDescribe().fields.getMap();
                 Set<String> fields=fieldMap.keySet();
                 List<String> FieldNames = new List<String>(fields);
-                List<Sobject> objectRecords=Database.query('SELECT ' + String.join(FieldNames, ',') + ' FROM '+objects);
-                system.debug(objectRecords);
+                List<Sobject> objectRecords=Database.query('SELECT ' + String.join(FieldNames, ',') + ' FROM '+objectName);
+               // system.debug(objectRecords);
                 recordsToBackup.add(objectRecords);
+                ObjectsData.put(objectName,objectRecords);
             }
+        
+        system.debug('DataMap'+ObjectsData);
                 
-                return recordsToBackup;
+               // return recordsToBackup;
+               return ObjectsData;
        
     }
 }
