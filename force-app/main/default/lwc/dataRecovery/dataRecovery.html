@@ -1,4 +1,29 @@
 <template>
+  <lightning-card title="Data Recovery">
+
+    <!--Search the elements-->
+    <lightning-layout multiple-rows="true" vertical-align="end">
+      <lightning-layout-item size="4" padding="around-small">
+           <!--Input text to Search Account-->
+          <lightning-input type="search" placeholder="Search...." label="Search object to Backup"
+              value={searchKey} 
+              onchange={handleSearchKey}> 
+          </lightning-input>
+          <p>Enter minimum 3 Characters to load suggestions</p>
+      </lightning-layout-item >
+    </lightning-layout>
+
+  <!-- objects-->
+    <lightning-card style="width: 100%">
+      <div style="height: 500px;width: 100%">
+          <lightning-datatable columns={columns} data={objectNames} onrowselection={handleSelection} key-field="id" style="width: 100%;">    
+          </lightning-datatable>
+      </div>     
+    </lightning-card>
+
+
     <lightning-input type="file" accept=".csv" onchange={handleFileChange}></lightning-input>
-    <lightning-button variant="brand" label="Upload" title="Upload" onclick={handleUpload}></lightning-button>
+    <p>{fileName}</p>
+    <lightning-button variant="brand" label="Start Recovery" title="Recovery" onclick={handleUpload}></lightning-button>
+  </lightning-card>
   </template>

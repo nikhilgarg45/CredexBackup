@@ -32,7 +32,7 @@
     </div>
 
         <!--service-->
-        
+     <div if:true={objectSelected}>
         <div if:true={service}>
             <lightning-card title="Select service to Backup the Data">
 
@@ -67,14 +67,15 @@
                 <div if:true={local}>  
                   <lightning-card>
                     <lightning-button variant="brand" label="Export now" onclick={exportData} style="margin-right: 40px;"></lightning-button>
-                    <lightning-button variant="brand" label="Schedule Export"></lightning-button>
+                    <!--lightning-button variant="brand" label="Schedule Export"></lightning-button-->
                     <!--lightning-button variant="brand" label="Schedule Export" onclick={uploadS3}></lightning-button-->
                   </lightning-card> 
                 </div>
 
             </lightning-card>
         </div>
-        
+    </div>
+
     <lightning-button label="Next" onclick={handleNext} class="slds-float_right" ></lightning-button>
     <lightning-button label="Previous" onclick={handlePrevious}></lightning-button>
   </lightning-card> 

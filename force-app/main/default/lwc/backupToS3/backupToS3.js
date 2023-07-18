@@ -9,7 +9,8 @@ export default class BackupToS3 extends LightningElement {
     @track objectNames = [];
     @track objectApiNames = [];
     @track selectedObjectNames=[];
-
+  
+    
     isModal=true;
     previous=true;
     currentStep='1';
@@ -19,6 +20,8 @@ export default class BackupToS3 extends LightningElement {
     local=false;
     aws = false;
     value='';
+    dataRows;
+    objectSelected;
     columns = [{ label: 'Names', fieldName: 'objectName', type: "text" }];
 
     get options(){
@@ -117,6 +120,22 @@ export default class BackupToS3 extends LightningElement {
         this.currentStep='2';
         this.service=true;
         this.previous=false;
+
+        this.dataRows=this.template.querySelector('lightning-datatable').getSelectedRows();
+        /*console.log('selectedRows.getSelectedRows()',selectedRows.getSelectedRows());
+        console.log('after data');
+        console.log('selectedRows ', selectedRows);
+        console.log('rows'+selectedRows);*/
+       // this.dataRows=selectedRows;
+        console.log(this.dataRows);
+        console.log(this.dataRows.length);
+        if(this.dataRows.length>0){
+            this.objectSelected=true;
+        }
+        else{
+            this.objectSelected=false;
+        }
+       // exportData(selectedRows.getSelectedRows());
     }
     handlePrevious(){
         this.currentStep='1';
@@ -126,6 +145,7 @@ export default class BackupToS3 extends LightningElement {
     }
     
     exportData(){
+        console.log('data export');
         // fetching Dates selected by user
         /*let dates=this.template.querySelectorAll('lightning-input');
         dates.forEach(function(date){
@@ -139,11 +159,12 @@ export default class BackupToS3 extends LightningElement {
         console.log('from date',this.fromDate);
         console.log('to date',this.toDate);  */
        
-        var selectedRows=this.template.querySelector('lightning-datatable').getSelectedRows();
-       // console.log('selectedRows ', selectedRows);
-       // console.log('rows'+selectedRows)
+       /* var selectedRows=this.template.querySelector('lightning-datatable');
+        console.log('after data');
+        console.log('selectedRows ', selectedRows);
+        console.log('rows'+selectedRows)*/
         var selectedObjectNames=[];
-        selectedObjectNames=JSON.stringify(selectedRows);
+        selectedObjectNames=JSON.stringify(this.dataRows);//rows
         selectedObjectNames = JSON.parse(selectedObjectNames);
       //  console.log('obj names', selectedObjectNames);
         for (var i = 0; i < selectedObjectNames.length; i++){
