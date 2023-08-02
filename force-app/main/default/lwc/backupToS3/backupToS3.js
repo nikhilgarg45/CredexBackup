@@ -3,14 +3,28 @@ import getObjectsApiNames from '@salesforce/apex/dataBackup.getObjectsApiNames';
 import getRecordsByObject from '@salesforce/apex/dataBackup.getRecordsByObject';
 import getObjectsApiNamesBySearch from '@salesforce/apex/dataBackup.getObjectsApiNamesBySearch';
 import uploadCSV from '@salesforce/apex/AWSFileService.uploadCSV';
+import getcsvContent from '@salesforce/apex/ZipDataController.getcsvContent';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import method from '@salesforce/apex/TestClass.method';
+//let items=[{n:'name'}];
+//let items={name:'n'};
 export default class BackupToS3 extends LightningElement {
 
     @track objectNames = [];
     @track objectApiNames = [];
     @track selectedObjectNames=[];
-  
-    
+
+    vfRoot = "https://credextechnology13-dev-ed--c.develop.vf.force.com/";
+
+    test='fejf';
+    fromDate=null;
+    toDate=null;
+    scheduleDate;
+    scheduleTime;
+    hasSchedule=false;
+
+
+    items=[];
     isModal=true;
     previous=true;
     currentStep='1';
@@ -22,6 +36,14 @@ export default class BackupToS3 extends LightningElement {
     value='';
     dataRows;
     objectSelected;
+    iframe;
+    minDate;
+
+    zipFileData=null;
+    
+    
+    CsvMap=new Map();
+
     columns = [{ label: 'Names', fieldName: 'objectName', type: "text" }];
 
     get options(){
@@ -29,7 +51,27 @@ export default class BackupToS3 extends LightningElement {
         {label:'AWS S3',value:'S3'}];
 
     }
+
+    handleClick(){
+        console.log('click');
+        var ifk=this.template.querySelector("iframe");
+        var vfWindow = ifk.contentWindow;
+        console.log('vfWindow>>>');
+        console.log(vfWindow);
+        vfWindow.postMessage('test string', this.vfRoot);
+    }
     connectedCallback(){
+        /*console.log('array>>>>>>>>>>');
+        console.log(thisitems);*/
+
+        // window.addEventListener('message', this.handleMessage);
+        window.addEventListener('message', (event) => this.handleMessage(event));
+        console.log('after window');
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Set time to midnight
+        this.minDate = today.toISOString().slice(0, -1); // Convert to ISO string
+        
         getObjectsApiNames()
         .then(data=>{
             this.objectNames = [];
@@ -46,7 +88,55 @@ export default class BackupToS3 extends LightningElement {
         })
     }
 
+    disconnectedCallback() {
+        // Remove the event listener when the component is removed
+        window.removeEventListener('message', this.handleMessage);
+      }
+
+      handleMessage(event) {
+        console.log('inside handlemssg');
+        // Check if the message is from the expected VF page
+       /* if (event.origin !== 'https://your-vf-page-url.com') {
+          return;
+        }*/
+    
+        // Check if the message contains the ZIP file data
+        if (event.data && event.data.name === 'ZipFileData') {
+            console.log('zip file data');
+          // Extract the ZIP file data from the event data
+          this.zipFileData = event.data.payload;
+          console.log('zip inside handle message>>>>>>',this.zipFileData);
+          console.log(typeof this.zipFileData);
+          /*setTimeout(() => {
+            this.uploadS3();
+            }, 7000)*/
+          this.uploadS3();
+          // Trigger the download of the ZIP file in the LWC
+        //  this.downloadZipFile(this.zipFileData); //if Export Now call this line from this function. 
+        }
+      }
+
+      downloadZipFile(zipFileData) {
+        // Create a Blob object from the ZIP file data
+        const blob = new Blob([this.zipFileData], { type: 'application/zip' });
+    
+        // Create an anchor element to initiate the download
+        const downloadLink = document.createElement('a');
+        downloadLink.href = URL.createObjectURL(blob);
+        downloadLink.download = 'SF Data.zip';
+    
+        // Trigger the download
+        downloadLink.click();
+    
+        // Release the allocated resources
+        URL.revokeObjectURL(downloadLink.href);
+      }
+
+      
+
     handleSearchKey(event){
+        console.log('array>>>>>>>>>>');
+        console.log(JSON.parse(JSON.stringify(this.items)));
        // console.log('search key',event.target.value);
         this.searchKey=event.target.value;
         //console.log(this.searchKey.length);
@@ -69,21 +159,10 @@ export default class BackupToS3 extends LightningElement {
         }
     }
 
-    handleSelection(event){
-        console.log(event);
-        console.log(event.target.value);
-        this.selectedObjectNames=event.detail.selectedRows;
-        console.log(event.detail.value);
-        console.log('test obj'+this.selectedObjectNames);
-        for (let i = 0; i < selectedRows.length; i++) {
-            console.log('You selected: ' + selectedRows[i]);
-            console.log('You selected: ' + selectedRows[i].objectName);
-        }
-    }
-    
-   
     handleRadio(event){
         if (event.target.value =='Local') {
+            console.log('array>>>>>>>>>>');
+            console.log(this.items);
             this.local = true;
             this.aws = false;
         }
@@ -120,6 +199,7 @@ export default class BackupToS3 extends LightningElement {
         this.currentStep='2';
         this.service=true;
         this.previous=false;
+        let scheduleDateTime;
 
         this.dataRows=this.template.querySelector('lightning-datatable').getSelectedRows();
         /*console.log('selectedRows.getSelectedRows()',selectedRows.getSelectedRows());
@@ -136,6 +216,34 @@ export default class BackupToS3 extends LightningElement {
             this.objectSelected=false;
         }
        // exportData(selectedRows.getSelectedRows());
+       this.iframe = this.template.querySelector("iframe");
+       console.log('iframe');
+       console.log(this.iframe);
+       console.log(this.iframe.contentWindow);
+       
+       let dates=this.template.querySelectorAll('lightning-input');
+        dates.forEach(function(date){
+            if(date.name=='fromDate'){
+                this.fromDate=date.value 
+            }
+            else if(date.name=='toDate'){
+                this.toDate=date.value;
+            }
+            else if(date.name=='scheduleDate'){
+                scheduleDateTime=date.value;
+            }
+        },this);
+        console.log('from date',this.fromDate);
+        console.log('to date',this.toDate); 
+        console.log('scheduleDate>>>>>>>>>>',this.scheduleDate);
+
+        const dateTime = new Date(scheduleDateTime);
+        this.scheduleDate = dateTime.toISOString().slice(0, 10);
+        this.scheduleTime = dateTime.toTimeString().slice(0, 8);
+        console.log('Date:', this.scheduleDate); // Output: Date: 2023-07-22
+        console.log('Time:', this.scheduleTime); //
+
+        
     }
     handlePrevious(){
         this.currentStep='1';
@@ -143,8 +251,43 @@ export default class BackupToS3 extends LightningElement {
         this.service=false;
 
     }
+
+    // this func will use to schedule jobs at given time
+    scheduleFunction() {
+        // Set the target date and time when you want the function to execute
+        this.hasSchedule=true;
+        const timeArray = this.scheduleTime.split(":");
+        const hours = parseInt(timeArray[0], 10);
+        const minutes = parseInt(timeArray[1], 10);
+        const seconds= parseInt(timeArray[2], 10);
+
+
+        console.log('schedule function');
+        const targetDate = new Date(this.scheduleDate); // Example date: August 1, 2023
+        const targetTimeHours = parseInt(hours, 10);; // 12 PM
+        const targetTimeMinutes = parseInt(minutes, 10);
+        const targetTimeSeconds = parseInt(seconds, 10);
+
+        // Combine the target date and time
+        targetDate.setHours(targetTimeHours);
+        targetDate.setMinutes(targetTimeMinutes);
+        targetDate.setSeconds(targetTimeSeconds);
     
-    exportData(){
+        // Get the current date and time
+        const now = new Date();
+
+        // Calculate the delay in milliseconds from the current time to the target time
+        const delay = targetDate - now;
+    
+        // Use setTimeout to schedule the function after the calculated delay
+        setTimeout(() => {
+          // Call the function you want to execute here
+          this.exportData();
+        }, delay);
+
+      }
+    
+    async exportData(){
         console.log('data export');
         // fetching Dates selected by user
         /*let dates=this.template.querySelectorAll('lightning-input');
@@ -170,21 +313,67 @@ export default class BackupToS3 extends LightningElement {
         for (var i = 0; i < selectedObjectNames.length; i++){
             this.objectApiNames.push(selectedObjectNames[i].objectName);
         }
+        
+        /*for(var i=0;i<data.length;i++){
+            const objectsNames=[];
+            for(j=i;j<i+50;j++){
+                objectsNames.push(data[i]);
+            }
+            await getRecordsByObject({objectNames:this.objectApiNames,fromDate:this.fromDate,toDate:this.toDate})
+            .then(data=>{
+                this.objectData.push(data);
+            })
+            .catch(data=>{
 
+            })
+        }*/
       /*
             @description : Implicitly fetching data of objects selected by the user
             */
-        getRecordsByObject({objectNames:this.objectApiNames})
+        await getRecordsByObject({objectNames:this.objectApiNames,fromDate:this.fromDate,toDate:this.toDate})
         .then(data=>{
             let c = this.objectApiNames[0];  
             for(var i=0;i<this.objectApiNames.length;i++){
                 let c = this.objectApiNames[i]
-                this.downloadCSV(data[c],c);
+              //  this.downloadCSV(data[c],c);
+               // this.CsvMap.set(c,this.downloadCSV(data[c],c));
+               var cont=this.downloadCSV(data[c],c);
+               console.log('cont>>>>>>');
+               console.log(cont);
+               console.log(typeof cont);
+                this.items.push({'Account':cont});
+                console.log('itema>>>>>>>>>>>>>>>>>>>>>>>>');
+                console.log(JSON.parse(JSON.stringify(this.items)));
             }
+            console.log('map of content')
+            console.log(this.items);
+            console.log(JSON.stringify(this.CsvMap));
+            console.log(typeof this.items);
+            console.log(typeof JSON.stringify(this.items));
+            //if(!this.CsvMap){
+               /* getcsvContent({csvContents:JSON.stringify(this.items)})
+                .then(data=>{
+                    console.log('yes');
+                })
+                .catch(error=>{
+                    console.log('error');
+                })*/
+           // }
         })
         .catch(error=>{
             console.log(console.log('error',error));
         })
+
+        //window.postMessage({ type: 'FROM_LWC', data: JSON.stringify(this.items) }, window.location.origin);
+
+        console.log('click');
+        var vfWindow = this.iframe.contentWindow;
+        console.log('vfWindow>>>');
+        console.log(vfWindow);
+         vfWindow.postMessage(JSON.parse(JSON.stringify(this.items)),this.vfRoot);
+        //this.uploadS3();
+        
+            
     }
 
     /* 
@@ -236,9 +425,11 @@ export default class BackupToS3 extends LightningElement {
             }
             console.log('csvString',csvString);
             this.csvString=csvString;
+            return csvString;
+           // this.uploadS3(csvString,ApiName);
            
             // Creating anchor element to download
-            let downloadElement = document.createElement('a');
+           /* let downloadElement = document.createElement('a');
      
             // This  encodeURI encodes special characters, except: , / ? : @ & = + $ # (Use encodeURIComponent() to encode these characters).
             downloadElement.href = 'data:text/csv;charset=utf-8,' + encodeURI(csvString);
@@ -252,28 +443,105 @@ export default class BackupToS3 extends LightningElement {
             console.log(document.body);
             // click() Javascript function to download CSV file
             console.log(document);
-            downloadElement.click(); 
+            downloadElement.click(); */
     }
+//csvString,ApiName
+    //uploadS3(){
+    uploadS3 = () => {
+        console.log('inside upload');
+        console.log('zip Data>>>>>>>>>>>>>>>>>>>>');
+        console.log(this.zipFileData);
+        console.log(typeof this.zipFileData);
+        if(this.zipFileData instanceof Blob){
+            console.log('zipData is of type Blob');
+        }
 
-    uploadS3(){
+        //const base64String= window.btoa(unescape(encodeURIComponent(blobData)));
        /* console.log('inside upload');
         console.log(typeof this.csvString);*/
-        const blob = new Blob([this.csvString], { type: 'text/csv;charset=utf-8;' });
-        console.log('blob'+blob);
+        //const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+        const blobData = new Blob(['sfsfsff'], { type: 'application/json' });
+        console.log('blob>>>>>>>>>>>',blobData);
+        console.log(typeof blobData);
+
+
+        const fileReader = new FileReader();
+        fileReader.onload = () => {
+            const base64String = fileReader.result.split(',')[1];
+                console.log('base64String>>>>>>>>>>>');
+                console.log('blobData>>>>>>>>');
+                console.log(blobData);
+                console.log(base64String);
+                console.log(this.zipFileData);
+            // Call the Apex method and pass the base64String as a parameter
+            uploadCSV({ZipData:base64String})
+            .then(data=>{
+                console.log(data);
+                console.log('successfully send to csv');
+                this.showToast('Your files are successfull Backup to S3','success');
+            })
+            .catch(error=>{
+                console.log('some error');
+                this.showToast('Some Errors occured','error');
+                console.log('error',error);
+            })
+        };
+
+        if(blobData instanceof Blob){
+            console.log('yes its a type of blob');
+        }
         // uploading to s3
-        uploadCSV({csvString:this.csvString})
+        //uploadCSV({csvString:'bd',apiName:'ndsn'})
+      /*  let zipDataaaa=JSON.stringify(this.zipFileData);
+        const blobData2 = new Blob([this.zipFileData]);
+        console.log('typeof', typeof blobData2);
+
+        if(blobData2 instanceof Blob){
+            console.log('yes');
+        }
+
+        console.log(JSON.stringify(blobData2));*/
+        //console.log(blobData2.size());
+
+        /*uploadCSV({ZipData:base64String})
         .then(data=>{
             console.log('successfully send to csv');
-            this.showToast('Your data is successfull Backup to S3','success');
+            this.showToast('Your files are successfull Backup to S3','success');
         })
         .catch(error=>{
-            this.showToast('Data is not sent to s3','error');
+            console.log('some error');
+            this.showToast('Some Errors occured','error');
             console.log('error',error);
-        })
+        })*/
 
        /* console.log('blob object'+blob);
         console.log(typeof blob);
         console.log(navigator.msSaveBlob(blob, 'Account File'));*/
+
+        
+        // Create a new FormData object and append the Blob data
+       /* let formData = new FormData();
+        formData.append('ZipData', this.zipFileData, 'file.zip');*/
+
+        // Make the HTTP callout to the Apex method using the fetch API
+       /* fetch('AWSFileService.uploadCSV', {
+            method: 'POST',
+            body: formData
+        })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then((data) => {
+                console.log('Success:', data);
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });*/
+            fileReader.readAsDataURL(this.zipFileData);
+
  
     }
 
